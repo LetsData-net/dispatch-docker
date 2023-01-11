@@ -11,6 +11,7 @@ services:
       - "5432:5432"
     volumes:
       - "dispatch-postgres:/var/lib/postgresql/data"
+
   core:
     image: dispatch-local
     env_file:
@@ -19,7 +20,7 @@ services:
       # Pro-tip: point this to a relative directory containing the Dispatch
       # project root to pick up changes from your dev environment
       # (e.g., ../dispatch-root)
-      context: https://github.com/Netflix/dispatch.git#latest
+      context: ../dispatch
   web:
     <<: *restart_policy
     image: dispatch-local
@@ -31,6 +32,8 @@ services:
     command: ["server", "start", "dispatch.main:app", "--host=0.0.0.0"]
     ports:
       - "8000:8000"
+    volumes:
+      - "../dispatch-templates/messaging-email-templates:/usr/local/lib/python3.9/site-packages/dispatch/messaging/email/templates"
   scheduler:
     <<: *restart_policy
     image: dispatch-local

@@ -22,7 +22,7 @@ cleanup () {
     return 0;
   fi
   echo "Cleaning up..."
-  docker-compose stop &> /dev/null
+  docker compose stop &> /dev/null
   DID_CLEAN_UP=1
 }
 trap cleanup ERR INT TERM
@@ -30,7 +30,7 @@ trap cleanup ERR INT TERM
 echo "Checking minimum requirements..."
 
 DOCKER_VERSION=$(docker version --format '{{.Server.Version}}')
-COMPOSE_VERSION=$(docker-compose --version | grep -o "[0-9]\{1,2\}\.[0-9]\{1,2\}\.[0-9]\{1,2\}")
+COMPOSE_VERSION=$(docker compose version | grep -o "[0-9]\{1,2\}\.[0-9]\{1,2\}\.[0-9]\{1,2\}")
 RAM_AVAILABLE_IN_DOCKER=$(docker run --rm busybox free -m 2>/dev/null | awk '/Mem/ {print $2}');
 
 # Compare dot-separated strings - function below is inspired by https://stackoverflow.com/a/37939589/808368
@@ -71,7 +71,7 @@ if [ $(ver $DOCKER_VERSION) -lt $(ver $MIN_DOCKER_VERSION) ]; then
 fi
 
 if [ $(ver $COMPOSE_VERSION) -lt $(ver $MIN_COMPOSE_VERSION) ]; then
-    echo "FAIL: Expected minimum docker-compose version to be $MIN_COMPOSE_VERSION but found $COMPOSE_VERSION"
+    echo "FAIL: Expected minimum docker compose version to be $MIN_COMPOSE_VERSION but found $COMPOSE_VERSION"
     exit -1
 fi
 
@@ -86,7 +86,7 @@ ensure_file_from_example $DISPATCH_EXTRA_REQUIREMENTS
 source $DISPATCH_CONFIG_ENV
 
 # Clean up old stuff and ensure nothing is working while we install/update
-docker-compose down --rmi local --remove-orphans
+docker compose down --rmi local --remove-orphans
 
 echo ""
 echo "Creating volumes for persistent storage..."
@@ -99,12 +99,12 @@ fill_uninitialised_secret "DISPATCH_JWT_SECRET"
 echo ""
 echo "Pulling, building, and tagging Docker images..."
 echo ""
-docker-compose pull postgres
-docker-compose build ${COMPOSE_BUILD_ARGS} --force-rm
+docker compose pull postgres
+docker compose build ${COMPOSE_BUILD_ARGS} --force-rm
 echo ""
 echo "Docker images pulled and built."
 
-docker-compose up -d postgres
+docker compose up -d postgres
 
 # Very naively check whether there's an existing dispatch-postgres volume and the PG version in it
 if [[ $(docker volume ls -q --filter name=dispatch-postgres) && $(docker run --rm -v dispatch-postgres:/db busybox cat /db/PG_VERSION 2>/dev/null) == "9.5" ]]; then
@@ -133,25 +133,25 @@ if [ ! $CI ]; then
   read -p "Do you want to load example data (WARNING: this will remove all existing database data) (y/N)?" CONT
   if [ "$CONT" = "y" ]; then
     echo "Downloading example data from Dispatch repository..."
-    curl -# -o "./$DISPATCH_DB_SAMPLE_DATA_FILE" "$DISPATCH_DB_SAMPLE_DATA_URL"
+#    curl -# -o "./$DISPATCH_DB_SAMPLE_DATA_FILE" "$DISPATCH_DB_SAMPLE_DATA_URL"
     echo "Dropping database dispatch if it already exists..."
-    docker-compose run -e "PGPASSWORD=$POSTGRES_PASSWORD" --rm postgres dropdb -h $DATABASE_HOSTNAME -p $DATABASE_PORT -U $POSTGRES_USER $DATABASE_NAME --if-exists
+    docker compose run -e "PGPASSWORD=$POSTGRES_PASSWORD" --rm postgres dropdb -h $DATABASE_HOSTNAME -p $DATABASE_PORT -U $POSTGRES_USER $DATABASE_NAME --if-exists
     echo "Creating dispatch database..."
-    docker-compose run -e "PGPASSWORD=$POSTGRES_PASSWORD" --rm postgres createdb -h $DATABASE_HOSTNAME -p $DATABASE_PORT -U $POSTGRES_USER $DATABASE_NAME
+    docker compose run -e "PGPASSWORD=$POSTGRES_PASSWORD" --rm postgres createdb -h $DATABASE_HOSTNAME -p $DATABASE_PORT -U $POSTGRES_USER $DATABASE_NAME
     echo "Loading example data to the database..."
-    docker-compose run -e "PGPASSWORD=$POSTGRES_PASSWORD" -v "$(pwd)/$DISPATCH_DB_SAMPLE_DATA_FILE:/$DISPATCH_DB_SAMPLE_DATA_FILE:Z" --rm postgres psql -h $DATABASE_HOSTNAME -p $DATABASE_PORT -U $POSTGRES_USER -d $DATABASE_NAME -f "/$DISPATCH_DB_SAMPLE_DATA_FILE"
+    docker compose run -e "PGPASSWORD=$POSTGRES_PASSWORD" -v "$(pwd)/$DISPATCH_DB_SAMPLE_DATA_FILE:/$DISPATCH_DB_SAMPLE_DATA_FILE:Z" --rm postgres psql -h $DATABASE_HOSTNAME -p $DATABASE_PORT -U $POSTGRES_USER -d $DATABASE_NAME -f "/$DISPATCH_DB_SAMPLE_DATA_FILE"
     echo "Example data loaded. Navigate to /default/auth/register and create a new user."
   else
     echo "Initializing the database"
-    docker-compose run --rm web database init
+    docker compose run --rm web database init
   fi
 fi
 echo "Running standard database migrations..."
-docker-compose run --rm web database upgrade
+docker compose run --rm web database upgrade
 
 echo ""
 echo "Installing plugins..."
-docker-compose run --rm web plugins install
+docker compose run --rm web plugins install
 
 cleanup
 
@@ -159,7 +159,7 @@ echo ""
 echo "----------------"
 echo "You're all done! Run the following command to get Dispatch running:"
 echo ""
-echo "  docker-compose up -d"
+echo "  docker compose up -d"
 echo ""
 echo "Once running, access the Dispatch UI at:"
 echo ""
